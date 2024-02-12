@@ -1,0 +1,151 @@
+import streamlit as st
+import sqlite3
+from passlib.hash import pbkdf2_sha256
+
+default_user_username = "user"
+default_user_password = "upass"
+default_admin_username = "admin"
+default_admin_password = "apass"
+# Database initialization
+conn = sqlite3.connect('library.db')
+cursor = conn.cursor()
+
+# streamlit configuration.
+st.set_page_config(page_title="Library Management System", page_icon=":books:")
+
+# tables in the database
+def create_tables():
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            author TEXT NOT NULL,
+            quantity INTEGER NOT NULL
+        )
+    ''')
+    conn.commit()
+
+# Function to insert initial data into the database
+def insert_initial_data():
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)",
+                   ("admin", pbkdf2_sha256.hash("admin_password"), "admin"))
+    conn.commit()
+
+# hash passwords
+def hash_password(password):
+    return pbkdf2_sha256.hash(password)
+
+# verify passwords
+def verify_password(plain_password, hashed_password):
+    return pbkdf2_sha256.verify(plain_password, hashed_password)
+
+#  user
+def create_user(username, password, role):
+    hashed_password = hash_password(password)
+    cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, hashed_password, role))
+    conn.commit()
+
+# Function to authenticate users
+def authenticate_user(username, password):
+    cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+    user = cursor.fetchone()
+    if user and verify_password(password, user[2]):
+        return user
+    return None
+
+# Function to add a book
+def add_book(title, author, quantity):
+    cursor.execute("INSERT INTO books (title, author, quantity) VALUES (?, ?, ?)", (title, author, quantity))
+    conn.commit()
+def issue_book(title, author, quantity):
+        cursor.execute("INSERT INTO books (title, author, quantity) VALUES (?, ?, ?)", (title, author, quantity))
+        conn.commit()
+def reqister_user(username, password, role):
+    cursor.execute("INSERT INTO users(username, password, role) VALUES (?, ?, ?)", (username, password, role))
+    conn.commit()
+
+def delete_user(username, password, role):
+        cursor.execute("INSERT INTO users(username, password, role) VALUES (?, ?, ?)", (username, password, role))
+        conn.commit()
+# Function to delete a book
+def delete_book(book_id):
+    cursor.execute("DELETE FROM books WHERE id=?", (book_id,))
+    conn.commit()
+
+
+def view_books():
+    cursor.execute("SELECT * FROM books")
+    return cursor.fetchall()
+def view_borrowed_books():
+    cursor.execute("UPDATE books SET quantity + quantity +1 WHERE id=?", (book_id,))
+    return cursor.fetchall()
+# Function to borrow a book
+def borrow_book(book_id):
+    cursor.execute("UPDATE books SET quantity = quantity - 1 WHERE id=?", (book_id,))
+    conn.commit()
+
+# Function to return a book
+def return_book(book_id):
+    cursor.execute("UPDATE books SET quantity = quantity + 1 WHERE id=?", (book_id,))
+    conn.commit()
+
+# Streamlit UI
+def main():
+    create_tables()
+    insert_initial_data()
+
+    st.title("Library Management System")
+    # Sidebar navigation
+    page = st.sidebar.selectbox("Navigation", ["Login", "Admin", "User"])
+
+    if page == "Login":
+        st.subheader("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            user = authenticate_user(username, password)
+            if user:
+                st.success(f"Logged in as {username} (Role: {user[3]})")
+            else:
+                st.error("Invalid username or password")
+
+    elif page == "Admin":
+        st.subheader("Admin Panel")
+
+        # Admin functionalities
+        admin_action = st.selectbox("Select Action", ["Issue Book", "Register User", "Delete User", "Add Book", "Delete Book", "View Books", "Logout"])
+        if admin_action == "Add Book":
+            st.subheader("Add Book")
+            title = st.text_input("Title")
+            author = st.text_input("Author")
+            quantity = st.number_input("Quantity", value=1)
+            if st.button("Add Book"):
+                add_book(title, author, quantity)
+                st.success("Book added successfully!")
+        if admin_action == "Issue Book":
+                st.subheader("Issue Book")
+                title = st.text_input("Title")
+                author = st.text_input("Author")
+                quantity = st.number_input("Quantity", value=1)
+                if st.button("Issue Book"):
+                    issue_book(title, author, quantity)
+                    st.success("Book Issued successfully!")
+        if admin_action == "Register User":
+            st.subheader("Register User")
+            username= st.text_input("username")
+            password = st.text_input("password")
+            if st.button("Register User"):
+                register_user(username, password, role)
+                st.success("User registered successfully!")
+        if admin_action == "Delete User":
+            st.subheader("Delete User")
+            title = st.text_in
